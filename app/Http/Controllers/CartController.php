@@ -14,35 +14,19 @@ class CartController extends Controller
 {
     private const CART_SESSION_KEY = 'cart';
 
-    public function add(AddToCartRequest $request, string $productCode): JsonResponse
+    public function index() 
     {
-        return $this->addProductByCode($request, $productCode, $request->quantity);
-    }
+        $products = Product::orderBy('name')->get();
 
-    public function clear(Request $request): JsonResponse
-    {
-        $request->session()->forget(self::CART_SESSION_KEY);
-
-        return response()->json([
-            'items' => [],
-            'item_count' => 0,
-            'subtotal' => 0.0,
-            'offer_discount' => 0.0,
-            'delivery_charge' => 0.0,
-            'total' => 0.0,
+        return view('products.index', [
+            'products' => $products,
         ]);
     }
 
-    public function removeItem(Request $request, int $productId): JsonResponse
+    public function add(AddToCartRequest $request, string $productCode): JsonResponse
     {
-        $cart = $this->getCart($request);
-
-        unset($cart[$productId]);
-
-        $request->session()->put(self::CART_SESSION_KEY, $cart);
-
-        return response()->json($this->getCart($request));
-    }
+        return $this->addProductByCode($request, $productCode, $request->quantity);
+    } 
 
     private function getCart(Request $request): array
     {
@@ -62,6 +46,9 @@ class CartController extends Controller
 
         if (isset($cart[$cartKey])) {
             $cart[$cartKey]['quantity'] += $quantity;
+            if ($cart[$cartKey]['quantity'] <= 0) {
+                unset($cart[$cartKey]);
+            }
         } else {
             $cart[$cartKey] = [
                 'product_id' => $product->id,

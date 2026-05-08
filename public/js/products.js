@@ -41,20 +41,20 @@ function renderCart(cart) {
                     <div class="fw-semibold">${item.name}</div>
                     <small class="text-secondary">${item.product_code}</small>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <small>${quantity} x ${formatCurrency(price)}</small>
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-outline-danger remove-cart-btn"
-                        data-product-id="${item.product_id}"
-                        aria-label="Remove ${item.name}"
-                    >&times;</button>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary cart-qty-decrement" data-product-code="${item.product_code}" data-product-id="${item.product_id}">-</button>
+                    <span class="px-1">${quantity}</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary cart-qty-increment" data-product-code="${item.product_code}">+</button>
                 </div>
             </div>
         `;
 
-        itemRow.querySelector('.remove-cart-btn').addEventListener('click', () => {
-            removeCartItem(item.product_id);
+        itemRow.querySelector('.cart-qty-increment').addEventListener('click', () => {
+            addToCart(item.product_code, 1);
+        });
+
+        itemRow.querySelector('.cart-qty-decrement').addEventListener('click', () => {
+            addToCart(item.product_code, -1);
         });
 
         cartItemsElement.appendChild(itemRow);
@@ -64,29 +64,34 @@ function renderCart(cart) {
     cartSubtotalElement.textContent = formatCurrency(subtotal);
 }
 
-async function removeCartItem(productId) {
+async function addToCart(productCode, quantity) {
     if (!csrfToken) {
-        return;
+        return null;
     }
 
     try {
-        const response = await fetch(`/cart/items/${productId}`, {
-            method: 'DELETE',
+        const response = await fetch(`/cart/add/${productCode}`, {
+            method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json',
             },
+            body: JSON.stringify({ quantity }),
         });
 
         if (!response.ok) {
-            showMessage('Unable to remove item from cart.', 'danger');
-            return;
+            const errorData = await response.json().catch(() => ({}));
+            showMessage(errorData.message || 'Unable to update cart.', 'danger');
+            return null;
         }
 
         const cart = await response.json().catch(() => ({}));
         renderCart(cart);
+        return cart;
     } catch (error) {
-        showMessage('Unable to remove item from cart.', 'danger');
+        showMessage('Unable to update cart.', 'danger');
+        return null;
     }
 }
 
@@ -123,34 +128,16 @@ if (csrfToken) {
                 return;
             }
 
-            const quantity = qtySelect.value;
+            const quantity = Number(qtySelect.value);
             button.disabled = true;
 
             try {
-                const response = await fetch(`/cart/add/${productCode}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({ quantity: Number(quantity) }),
-                });
+                const cart = await addToCart(productCode, quantity);
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    const message = errorData.message || 'Unable to add product to cart.';
-                    showMessage(message, 'danger');
-                    return;
+                if (cart) {
+                    openCartSidebar();
+                    showMessage(`${quantity} x ${productName} added to cart.`, 'success');
                 }
-
-                const cart = await response.json().catch(() => ({}));
-                renderCart(cart);
-                openCartSidebar();
-
-                showMessage(`${quantity} x ${productName} added to cart.`, 'success');
-            } catch (error) {
-                showMessage('Unable to add product to cart.', 'danger');
             } finally {
                 button.disabled = false;
             }
