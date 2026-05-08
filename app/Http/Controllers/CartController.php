@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AddToCartRequest;
-use App\Http\Requests\StoreCartItemRequest;
 use App\Http\Requests\UpdateCartItemRequest;
 use App\Models\DeliveryCharge;
 use App\Models\SpendThresholdOffer;
@@ -34,9 +33,15 @@ class CartController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, int $productId): JsonResponse
+    public function remove(Request $request, int $productId): JsonResponse
     {
+        $cart = $this->getCart($request);
 
+        unset($cart[$productId]);
+
+        $request->session()->put(self::CART_SESSION_KEY, $cart);
+
+        return response()->json($this->getCart($request));
     }
 
     private function getCart(Request $request): array
@@ -53,11 +58,12 @@ class CartController extends Controller
         }
 
         $cart = $this->getCart($request);
+        $cartKey = $product->id;
 
-        if (isset($cart[$productCode])) {
-            $cart[$productCode]['quantity'] += $quantity;
+        if (isset($cart[$cartKey])) {
+            $cart[$cartKey]['quantity'] += $quantity;
         } else {
-            $cart[$productCode] = [
+            $cart[$cartKey] = [
                 'product_id' => $product->id,
                 'product_code' => $product->code,
                 'name' => $product->name,
