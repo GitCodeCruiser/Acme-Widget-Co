@@ -74,5 +74,8 @@
 @endsection
 
 @push('scripts')
+    <script>
+        window.initialCart = @json(session('cart', []));
+    </script>
     <script src="{{ asset('js/products.js') }}"></script>
 @endpush

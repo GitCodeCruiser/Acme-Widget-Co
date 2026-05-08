@@ -33,7 +33,7 @@ class CartController extends Controller
         ]);
     }
 
-    public function remove(Request $request, int $productId): JsonResponse
+    public function removeItem(Request $request, int $productId): JsonResponse
     {
         $cart = $this->getCart($request);
 

@@ -1,4 +1,5 @@
 const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : null;
 const statusRow = document.getElementById('status-message');
 const statusAlert = statusRow ? statusRow.querySelector('.alert') : null;
 const cartSidebarElement = document.getElementById('cartSidebar');
@@ -40,15 +41,53 @@ function renderCart(cart) {
                     <div class="fw-semibold">${item.name}</div>
                     <small class="text-secondary">${item.product_code}</small>
                 </div>
-                <small>${quantity} x ${formatCurrency(price)}</small>
+                <div class="d-flex align-items-center gap-2">
+                    <small>${quantity} x ${formatCurrency(price)}</small>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger remove-cart-btn"
+                        data-product-id="${item.product_id}"
+                        aria-label="Remove ${item.name}"
+                    >&times;</button>
+                </div>
             </div>
         `;
+
+        itemRow.querySelector('.remove-cart-btn').addEventListener('click', () => {
+            removeCartItem(item.product_id);
+        });
 
         cartItemsElement.appendChild(itemRow);
     });
 
     cartItemCountElement.textContent = String(totalItems);
     cartSubtotalElement.textContent = formatCurrency(subtotal);
+}
+
+async function removeCartItem(productId) {
+    if (!csrfToken) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/cart/items/${productId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            showMessage('Unable to remove item from cart.', 'danger');
+            return;
+        }
+
+        const cart = await response.json().catch(() => ({}));
+        renderCart(cart);
+    } catch (error) {
+        showMessage('Unable to remove item from cart.', 'danger');
+    }
 }
 
 function openCartSidebar() {
@@ -70,9 +109,9 @@ function showMessage(text, type = 'success') {
     statusRow.classList.remove('d-none');
 }
 
-if (csrfTokenMeta) {
-    const csrfToken = csrfTokenMeta.getAttribute('content');
+renderCart(window.initialCart || {});
 
+if (csrfToken) {
     document.querySelectorAll('.add-to-cart-btn').forEach((button) => {
         button.addEventListener('click', async () => {
             const productCode = button.dataset.productCode;
