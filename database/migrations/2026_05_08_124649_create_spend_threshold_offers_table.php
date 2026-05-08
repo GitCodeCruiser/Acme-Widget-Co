@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('spend_threshold_offers', function (Blueprint $table) {
             $table->id();
-            $table->string('product_code');
+            $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
             $table->integer('every_nth');
             $table->integer('discount_type')->comment('0 for fixed amount, 1 for percentage');
             $table->decimal('discount_amount', 10, 2);

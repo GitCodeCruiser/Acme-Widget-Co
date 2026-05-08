@@ -1,19 +1,55 @@
-const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : null;
-const statusRow = document.getElementById('status-message');
-const statusAlert = statusRow ? statusRow.querySelector('.alert') : null;
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+const statusAlert = document.getElementById('status-message')?.querySelector('.alert');
 const cartSidebarElement = document.getElementById('cartSidebar');
 const cartItemsElement = document.getElementById('cart-items');
 const cartEmptyStateElement = document.getElementById('cart-empty-state');
 const cartSubtotalElement = document.getElementById('cart-subtotal');
-const cartItemCountElement = document.getElementById('cart-item-count');
+const cartDeliveryChargeElement = document.getElementById('cart-delivery-charge');
+const cartTotalElement = document.getElementById('cart-total');
 
 function formatCurrency(amount) {
     return `$${Number(amount || 0).toFixed(2)}`;
 }
 
+function applyCartSummary(summary = {}) {
+    if (!cartSubtotalElement || !cartDeliveryChargeElement || !cartTotalElement) {
+        return;
+    }
+
+    const subtotal = summary.subtotal ?? 0;
+    const deliveryCharge = summary.delivery_charge ?? 0;
+    const total = summary.total ?? (subtotal + deliveryCharge);
+
+    cartSubtotalElement.textContent = formatCurrency(subtotal);
+    cartDeliveryChargeElement.textContent = formatCurrency(deliveryCharge);
+    cartTotalElement.textContent = formatCurrency(total);
+}
+
+async function refreshCartTotals() {
+    try {
+        const response = await fetch('/cart/total', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const totals = await response.json().catch(() => null);
+
+        if (totals) {
+            applyCartSummary(totals);
+        }
+    } catch (error) {
+
+    }
+}
+
 function renderCart(cart) {
-    if (!cartItemsElement || !cartEmptyStateElement || !cartSubtotalElement || !cartItemCountElement) {
+    if (!cartItemsElement || !cartEmptyStateElement) {
         return;
     }
 
@@ -60,8 +96,13 @@ function renderCart(cart) {
         cartItemsElement.appendChild(itemRow);
     });
 
-    cartItemCountElement.textContent = String(totalItems);
-    cartSubtotalElement.textContent = formatCurrency(subtotal);
+    applyCartSummary({
+        item_count: totalItems,
+        subtotal,
+        total: subtotal,
+    });
+
+    void refreshCartTotals();
 }
 
 async function addToCart(productCode, quantity) {
@@ -105,13 +146,13 @@ function openCartSidebar() {
 }
 
 function showMessage(text, type = 'success') {
-    if (!statusRow || !statusAlert) {
+    if (!statusAlert) {
         return;
     }
 
     statusAlert.className = `alert alert-${type} mb-0`;
     statusAlert.textContent = text;
-    statusRow.classList.remove('d-none');
+    statusAlert.parentElement?.classList.remove('d-none');
 }
 
 renderCart(window.initialCart || {});

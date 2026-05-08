@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AddToCartRequest;
-use App\Http\Requests\UpdateCartItemRequest;
 use App\Models\DeliveryCharge;
 use App\Models\SpendThresholdOffer;
 use App\Models\Product;
@@ -26,7 +25,28 @@ class CartController extends Controller
     public function add(AddToCartRequest $request, string $productCode): JsonResponse
     {
         return $this->addProductByCode($request, $productCode, $request->quantity);
-    } 
+    }
+
+    public function total(Request $request): JsonResponse
+    {
+        $cart = $this->getCart($request);
+        $subtotal = $this->calculateSubtotal($cart);
+        $offerDiscount = $this->calculateOfferDiscount($cart);
+        $discountedSubtotal = $subtotal - $offerDiscount;
+
+        $deliveryCharge = DeliveryCharge::where('min_threshold', '<=', $discountedSubtotal)
+            ->where('max_threshold', '>=', $discountedSubtotal)
+            ->orderBy('min_threshold')
+            ->value('charge') ?? 0.0;
+
+        return response()->json([
+            'items' => $cart,
+            'subtotal' => round($subtotal, 2),
+            'offer_discount' => round($offerDiscount, 2),
+            'delivery_charge' => round($deliveryCharge, 2),
+            'total' => round($discountedSubtotal + $deliveryCharge, 2),
+        ]);
+    }
 
     private function getCart(Request $request): array
     {
@@ -50,6 +70,10 @@ class CartController extends Controller
                 unset($cart[$cartKey]);
             }
         } else {
+            if ($quantity <= 0) {
+                return response()->json($this->getCart($request), 200);
+            }
+
             $cart[$cartKey] = [
                 'product_id' => $product->id,
                 'product_code' => $product->code,
@@ -62,5 +86,63 @@ class CartController extends Controller
         $request->session()->put(self::CART_SESSION_KEY, $cart);
 
         return response()->json($this->getCart($request), 201);
+    }
+
+    private function calculateSubtotal(array $cart): float
+    {
+        $subtotal = 0.0;
+
+        foreach ($cart as $item) {
+            $price = $item['price'] ?? 0;
+            $quantity = $item['quantity'];
+
+            $subtotal += $price * $quantity;
+        }
+
+        return $subtotal;
+    }
+
+    private function calculateOfferDiscount(array $cart): float
+    {
+        if (empty($cart)) {
+            return 0.0;
+        }
+
+        $totalDiscount = 0.0;
+
+        foreach ($cart as $item) {
+            $productId = $item['product_id'] ?? null;
+            $quantity = $item['quantity']; //10
+            $unitPrice = $item['price']; // 100
+            $lineSubtotal = $unitPrice * $quantity; // 1000
+            $lineDiscount = 0.0;
+
+            if (! $productId) {
+                continue;
+            }
+
+            $offers = SpendThresholdOffer::where('product_id', $productId)->get();
+
+            foreach ($offers as $offer) {
+                $everyNth = $offer->every_nth;
+                $eligibleCount = (int) ($quantity/$everyNth);
+
+                if ($eligibleCount <= 0) {
+                    continue;
+                }
+
+                if ($offer->discount_type === 1) {
+                    $discountPerItem = $unitPrice * ($offer->discount_amount / 100); // 100 * (50/100) => 50
+                } else {
+                    $discountPerItem = $offer->discount_amount;
+                }
+
+                $lineDiscount += $eligibleCount * $discountPerItem;
+            }
+
+            $totalDiscount += min($lineDiscount, $lineSubtotal);
+        }
+
+        return $totalDiscount;
     }
 }

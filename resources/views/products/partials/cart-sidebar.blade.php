@@ -11,12 +11,12 @@
 
         <div class="mt-auto border-top pt-3">
             <div class="d-flex justify-content-between">
-                <span>Items</span>
-                <strong id="cart-item-count">0</strong>
+                <span>Delivery</span>
+                <strong id="cart-delivery-charge">$0.00</strong>
             </div>
-            <div class="d-flex justify-content-between">
-                <span>Subtotal</span>
-                <strong id="cart-subtotal">$0.00</strong>
+            <div class="d-flex justify-content-between border-top mt-2 pt-2">
+                <span>Total</span>
+                <strong id="cart-total">$0.00</strong>
             </div>
         </div>
     </div>

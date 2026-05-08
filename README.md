@@ -1,71 +1,196 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Acme Widget Co Cart
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel-based cart demo for Acme Widget Co with a Bootstrap product listing page and an offcanvas cart sidebar.
 
-## About Laravel
+## What This App Does
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Lists products on the home page.
+- Lets users add products with a selected quantity.
+- Shows cart contents in a right-side offcanvas sidebar.
+- Supports quantity changes directly in the cart (`+` and `-`).
+- Calculates delivery charges based on cart subtotal thresholds.
+- Applies volume discounts (offers) on eligible products.
+- Displays subtotal, delivery charge, and total in the cart sidebar.
+- Persists cart data in the user session.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tech Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Laravel 13
+- PHP 8.2+
+- Bootstrap 5 (CDN)
+- Vanilla JavaScript (`public/js/products.js`)
 
-## Learning Laravel
+## How It Works
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 1. Product listing
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- Route: `GET /`
+- Controller method: `CartController@index`
+- View: `resources/views/products/index.blade.php`
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+The page renders product cards with:
 
-## Agentic Development
+- Product name, code, and price
+- Quantity input (default `1`)
+- Add button
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 2. Cart add/update behavior
 
-```bash
-composer require laravel/boost --dev
+- Route: `POST /cart/add/{productCode}`
+- Controller method: `CartController@add`
+- Request validation: `AddToCartRequest`
 
-php artisan boost:install
+Request payload:
+
+```json
+{
+	"quantity": 1
+}
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Cart keying strategy:
 
-## Contributing
+- Cart is stored in session under key `cart`.
+- Each item is keyed by `product_id` for constant-time updates.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Quantity rules:
 
-## Code of Conduct
+- Positive quantity adds/increments items.
+- Negative quantity decrements items.
+- If resulting quantity is `<= 0`, the item is removed.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 3. Cart totals calculation
 
-## Security Vulnerabilities
+- Route: `GET /cart/total`
+- Controller method: `CartController@total`
+- Response:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```json
+{
+	"subtotal": 65.90,
+	"delivery_charge": 5.95,
+	"total": 71.85
+}
+```
 
-## License
+This endpoint:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- Calculates cart subtotal (sum of price × quantity per item).
+- Looks up applicable delivery charge tier by subtotal threshold.
+- Applies volume discounts (offers) on eligible products.
+- Returns totals for display in the cart sidebar.
+
+The frontend calls this endpoint automatically after any cart mutation to keep the summary up-to-date.
+
+### 4. Frontend cart interactions
+
+Main file: `public/js/products.js`
+
+- `renderCart(cart)` renders cart rows and subtotal.
+- `addToCart(productCode, quantity)` is the single cart mutation function used by:
+	- Product card Add button
+	- Cart sidebar `+` button (`quantity = 1`)
+	- Cart sidebar `-` button (`quantity = -1`)
+
+The sidebar opens automatically when adding from product cards.
+
+### 5. Session hydration on page load
+
+- Blade injects `window.initialCart = @json(session('cart', []))`.
+- JavaScript calls `renderCart(window.initialCart || {})`.
+
+This ensures cart state survives refreshes.
+
+## Setup
+
+1. Install PHP dependencies:
+
+```bash
+composer install
+```
+
+2. Install frontend dependencies:
+
+```bash
+npm install
+```
+
+3. Configure environment:
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+4. Run migrations:
+
+```bash
+php artisan migrate
+```
+
+5. Seed data:
+
+```bash
+php artisan db:seed
+```
+
+6. Start the app:
+
+```bash
+php artisan serve
+npm run dev
+```
+
+## Seeded Data
+
+**Products:**
+
+- `R01` Red Widget (`$32.95`)
+- `G01` Green Widget (`$24.95`)
+- `B01` Blue Widget (`$7.95`)
+
+**Delivery Charges:**
+
+Tiered by subtotal threshold:
+
+- `$0.00–$49.99` → `$4.95`
+- `$50.00–$89.99` → `$2.95`
+- `$90.00+` → Free
+
+**Offers:**
+
+- Red Widget (`R01`): Buy 2, get the 2nd at 50% off.
+  - Rule: Every 2 items, apply 50% discount to one unit.
+  - Example: 2× R01 @ $32.95 each = $65.90 - $16.475 (50% off 1) = `$49.425`
+
+## Assumptions Made
+
+- Cart is session-scoped (guest-user cart), not persisted per authenticated user.
+- Quantity `0` is invalid; decrements are represented with `-1`.
+- A product entry is removed automatically when quantity becomes `<= 0`.
+- Product codes are unique and stable identifiers for add operations.
+- Prices are read from DB at add-time and stored in the cart snapshot.
+- Currency formatting in UI is USD-style (`$` with 2 decimals).
+- Delivery charges are applied based on cart subtotal threshold.
+- Offers (volume discounts) are applied per-product based on quantity tiers.
+- Cart sidebar displays subtotal, delivery charge, and total (computed server-side).
+- CSRF token meta tag exists in layout for AJAX requests.
+
+## Notes
+
+- Items are removed by decrementing to `<= 0`; there is no dedicated `x` (remove) button.
+- The `/cart/total` endpoint is called automatically after each cart mutation to fetch current delivery charges and discounts.
+- Offers are evaluated server-side based on `SpendThresholdOffer` database records; discount logic uses integer division to determine eligible quantity.
 
 ## Staging Admin Seeder
 
-On staging, run the admin seeder to create the staging admin account:
+If needed for staging/admin setup:
 
 ```bash
 php artisan db:seed --class=AdminUserSeeder
 ```
 
-Staging admin credentials:
+Current seeded credentials:
 
-- Email: admin@admin.com
-- Password: 12345678
+- Email: `admin@admin.com`
+- Password: `12345678`
