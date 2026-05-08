@@ -56,3 +56,16 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Staging Admin Seeder
+
+On staging, run the admin seeder to create the staging admin account:
+
+```bash
+php artisan db:seed --class=AdminUserSeeder
+```
+
+Staging admin credentials:
+
+- Email: admin@admin.com
+- Password: 12345678
