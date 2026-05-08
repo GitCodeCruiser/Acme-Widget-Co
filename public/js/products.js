@@ -3,7 +3,7 @@ const statusAlert = document.getElementById('status-message')?.querySelector('.a
 const cartSidebarElement = document.getElementById('cartSidebar');
 const cartItemsElement = document.getElementById('cart-items');
 const cartEmptyStateElement = document.getElementById('cart-empty-state');
-const cartSubtotalElement = document.getElementById('cart-subtotal');
+const cartSummaryElement = document.getElementById('cart-summary');
 const cartDeliveryChargeElement = document.getElementById('cart-delivery-charge');
 const cartTotalElement = document.getElementById('cart-total');
 
@@ -12,15 +12,13 @@ function formatCurrency(amount) {
 }
 
 function applyCartSummary(summary = {}) {
-    if (!cartSubtotalElement || !cartDeliveryChargeElement || !cartTotalElement) {
+    if (!cartDeliveryChargeElement || !cartTotalElement) {
         return;
     }
 
-    const subtotal = summary.subtotal ?? 0;
     const deliveryCharge = summary.delivery_charge ?? 0;
-    const total = summary.total ?? (subtotal + deliveryCharge);
+    const total = summary.total ?? 0;
 
-    cartSubtotalElement.textContent = formatCurrency(subtotal);
     cartDeliveryChargeElement.textContent = formatCurrency(deliveryCharge);
     cartTotalElement.textContent = formatCurrency(total);
 }
@@ -58,6 +56,7 @@ function renderCart(cart) {
 
     cartItemsElement.innerHTML = '';
     cartEmptyStateElement.classList.toggle('d-none', hasItems);
+    cartSummaryElement?.classList.toggle('d-none', !hasItems);
 
     let totalItems = 0;
     let subtotal = 0;

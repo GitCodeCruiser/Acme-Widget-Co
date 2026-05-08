@@ -36,7 +36,6 @@ class CartController extends Controller
 
         $deliveryCharge = DeliveryCharge::where('min_threshold', '<=', $discountedSubtotal)
             ->where('max_threshold', '>=', $discountedSubtotal)
-            ->orderBy('min_threshold')
             ->value('charge') ?? 0.0;
 
         return response()->json([
@@ -108,20 +107,23 @@ class CartController extends Controller
             return 0.0;
         }
 
+        $productIds = array_filter(array_column($cart, 'product_id'));
+        $allOffers = SpendThresholdOffer::whereIn('product_id', $productIds)->get()->groupBy('product_id');
+
         $totalDiscount = 0.0;
 
         foreach ($cart as $item) {
             $productId = $item['product_id'] ?? null;
-            $quantity = $item['quantity']; //10
-            $unitPrice = $item['price']; // 100
-            $lineSubtotal = $unitPrice * $quantity; // 1000
+            $quantity = $item['quantity'];
+            $unitPrice = $item['price'];
+            $lineSubtotal = $unitPrice * $quantity;
             $lineDiscount = 0.0;
 
             if (! $productId) {
                 continue;
             }
 
-            $offers = SpendThresholdOffer::where('product_id', $productId)->get();
+            $offers = $allOffers[$productId] ?? collect();
 
             foreach ($offers as $offer) {
                 $everyNth = $offer->every_nth;
@@ -131,8 +133,8 @@ class CartController extends Controller
                     continue;
                 }
 
-                if ($offer->discount_type === 1) {
-                    $discountPerItem = $unitPrice * ($offer->discount_amount / 100); // 100 * (50/100) => 50
+                if ($offer->discount_type == 1) {
+                    $discountPerItem = $unitPrice * ($offer->discount_amount / 100);
                 } else {
                     $discountPerItem = $offer->discount_amount;
                 }

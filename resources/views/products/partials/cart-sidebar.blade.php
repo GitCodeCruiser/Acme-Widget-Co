@@ -9,7 +9,7 @@
 
         <div id="cart-items" class="list-group mb-3"></div>
 
-        <div class="mt-auto border-top pt-3">
+        <div id="cart-summary" class="mt-auto border-top pt-3 d-none">
             <div class="d-flex justify-content-between">
                 <span>Delivery</span>
                 <strong id="cart-delivery-charge">$0.00</strong>

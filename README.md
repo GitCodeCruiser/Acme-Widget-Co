@@ -68,10 +68,13 @@ Quantity rules:
 ```json
 {
 	"subtotal": 65.90,
-	"delivery_charge": 5.95,
-	"total": 71.85
+	"offer_discount": 16.47,
+	"delivery_charge": 4.95,
+	"total": 54.37
 }
 ```
+
+Example above reflects a cart with 2 × `R01` using current seeded offer and delivery rules.
 
 This endpoint:
 
